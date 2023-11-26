@@ -6,6 +6,7 @@ import {
   getPedidos,
   getPedidosIdxIdUsuario,
   updatePedido,
+  receiveWebhook
 } from "../controllers/pedidoController.js";
 import { auth,isAdmin } from "../middlewares/auth.middleware.js";
 import { validateSchema } from "../middlewares/validator.middleware.js";
@@ -21,8 +22,13 @@ router.post(
   validateSchema(createPedidoSchema),
   createPedido
 );
-
-router.get("/obtener/:id", auth, getPedidoId);
+router.post(
+  "/webhook", receiveWebhook
+);
+router.get(
+  "/estadoPago", receiveWebhook
+);
+router.get("/obtener/:id", getPedidoId);
 router.get("/obtenerxUsuaio/:id", auth, getPedidosIdxIdUsuario);
 router.put(
   "/editar/:id",

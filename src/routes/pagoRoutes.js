@@ -12,4 +12,5 @@ router.post(
     // validateSchema(createPagoSchema),
     createPago
   );
+ 
 export default router;

@@ -26,40 +26,43 @@ export function LoginPage() {
   }, [isAuthenticated]);
 
   return (
-    <div className=" flex items-center justify-center">
-      <Card>
+    <div className="container-xl">
+    <div className="row">
+      <div className="col-md-6 mx-auto p-5">
         {loginErrors.map((error, i) => (
           <Message message={error} key={i} />
         ))}
-        <h1 className="text-2xl font-bold">Login</h1>
+        <h1 className="h1">Login</h1>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Label htmlFor="email">Email:</Label>
+        <form onSubmit={handleSubmit(onSubmit)} >
           <Input
-            label="Write your email"
+          className="mb-3"
+            label="ingrese su email"
             type="email"
             name="email"
-            placeholder="youremail@domain.tld"
+            placeholder="ejemplo@gmail.com"
             {...register("email", { required: true })}
           />
           <p>{errors.email?.message}</p>
 
-          <Label htmlFor="password">Password:</Label>
           <Input
+          label="Ingrese su password"
+          className="mb-3"
             type="password"
             name="password"
-            placeholder="Write your password"
+            placeholder="**********"
             {...register("password", { required: true, minLength: 6 })}
           />
           <p>{errors.password?.message}</p>
 
-          <Button>Login</Button>
+          <Button >Login</Button>
         </form>
 
         <p className="flex gap-x-2 justify-between">
           Don't have an account? <Link to="/register" className="text-sky-500">Sign up</Link>
         </p>
-      </Card>
+      </div>
+      </div>
     </div>
   );
 }

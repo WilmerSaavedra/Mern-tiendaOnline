@@ -1,10 +1,10 @@
-import { forwardRef } from "react";
+import { forwardRef, useEffect } from "react";
+import { MDBTextArea } from 'mdb-react-ui-kit';
 
-export const Textarea = forwardRef((props, ref, rows = 2) => (
-  <textarea
-    {...props}
-    ref={ref}
-    className="w-full bg-zinc-700 text-white px-4 py-2 rounded-md"
-    rows={rows}
-  />
-));
+export const Textarea = forwardRef((props, ref) => {
+  const { ...rest } = props;
+
+  return (
+    <MDBTextArea {...rest}   ref={ref} />
+  );
+});

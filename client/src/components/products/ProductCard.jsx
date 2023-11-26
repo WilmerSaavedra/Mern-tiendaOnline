@@ -36,7 +36,7 @@ export function ProductCard({ products }) {
       actualizarCarrito(nuevoCarrito);
       sessionStorage.setItem("listaCarrito", JSON.stringify(nuevoCarrito));
       // Agregar la notificación aquí
-      toast.success(`               ${products.nombre},añadido al carrito`, {
+      toast.success(`${products.nombre},añadido al carrito`, {
         icon: ({ theme, type }) => (
           <img
             src={products.image.principal.url}
@@ -72,7 +72,9 @@ export function ProductCard({ products }) {
     <Card>
       <div className="card mb-4 product-wap rounded-0">
         <div className="card rounded-0">
-          {!imageLoaded && <img src="../src/assets/img/apple-icon.png" alt="Loading" />}
+          {!imageLoaded && (
+            <img src="../src/assets/img/apple-icon.png" alt="Loading" />
+          )}
           <img
             src={products.image.principal.url}
             alt="Product"

@@ -1,19 +1,26 @@
-export const handleInputNumerico = (inputValue, maxLength,campo) => {
+export const handleInputNumerico = (inputValue, inputName) => {
+  const maxFieldLengths = { telefono: 9, dni: 8 };
+  const maxLength = maxFieldLengths[inputName] || 50;
   let valorLimitado = inputValue.replace(/[^0-9]/g, "");
-  if (campo==="telefono" && valorLimitado.length > 0 && valorLimitado[0] !== "9") {
-    valorLimitado = '9' + valorLimitado;
+  if (
+    inputName === "telefono" &&
+    valorLimitado.length > 0 &&
+    valorLimitado[0] !== "9"
+  ) {
+    valorLimitado = "9" + valorLimitado;
   }
   valorLimitado = valorLimitado.slice(0, maxLength);
   return valorLimitado;
 };
 
-
-export const handleInputLetras = (inputValue, maxLength) => {
+export const handleInputLetras = (inputValue, inputName) => {
+  const maxLength = 50;
   const soloLetras = inputValue.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, "");
   const valorLimitado = soloLetras.slice(0, maxLength);
   return valorLimitado;
 };
-export const addFechaDelivery=(date, days) =>{
+
+export const addFechaDelivery = (date, days) => {
   const result = new Date(date);
   while (days > 0) {
     result.setDate(result.getDate() + 1);
@@ -22,7 +29,7 @@ export const addFechaDelivery=(date, days) =>{
     }
   }
   return result;
-}
+};
 export const generateLocalidadOptions = () => {
   return [
     { value: "0", label: "Seleccione una localidad de Comas" },
@@ -39,5 +46,4 @@ export const generateLocalidadOptions = () => {
     { value: "Belaunde Este", label: "Belaunde Este" },
     { value: "Plaza de Armas", label: "Plaza de Armas" },
   ];
-}
-
+};

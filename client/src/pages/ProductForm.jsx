@@ -1,174 +1,240 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { Button, Card, Input, Label } from "../components/ui";
+import Swal from "sweetalert2";
+import { useForm, useWatch } from "react-hook-form";
 import { useProducts } from "../context/productContext";
-import { Textarea } from "../components/ui/Textarea";
-import { useForm } from "react-hook-form";
-import { productSchema } from "../schemas/product";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { ModalProducto } from "../components/products/ModalProducto";
+import { Alert } from "react-bootstrap";
 
 dayjs.extend(utc);
 
-export function ProductForm() {
+export function ProductForm({ isOpen }) {
+  const { reset } = useForm();
   const {
     createProduct,
-    getProduct,
+    getProducts,
     updateProduct,
+    deleteProduct,
+    products,
     errors: registerErrors,
   } = useProducts();
-  const navigate = useNavigate();
-  const params = useParams();
 
-  const {
-    register,
-    setValue,
-    handleSubmit,
-    setFieldValue,
+  const [selectedProducts, setSelectedProducts] = useState({});
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
 
-    formState: { errors },
-  } = useForm({ resolver: zodResolver(productSchema) });
-  // Agrega un estado local para la imagen
-  const [image, setSelectedImage] = useState(null);
-  const [additionalImages, setAdditionalImages] = useState([]);
-  const onSubmit = async (data) => {
-    try {
-      if (!image) {
-        console.log("No se seleccionó una imagen");
-        return;
-      }
-      if (!additionalImages) {
-        console.log("No se seleccionó una imagen");
-        return;
-      }
-      const updatedData = {
-        ...data,
-        image,
-        additionalImages,
-      };
-      if (params.id) {
-        await updateProduct(params.id, {
-          ...data,
-        });
-      } else {
-        await createProduct(updatedData);
-        console.log("data submit ", updatedData);
-      }
-
-      navigate("/product");
-    } catch (error) {
-      console.log(error);
-      // Handle error appropriately
-    }
-  };
-  const handleChange = (e) => {
-    if (e.target.name === "image") {
-      setSelectedImage(e.target.files[0]);
-    } else if (e.target.name === "additionalImages") {
-      setAdditionalImages([...e.target.files]);
-    }
-  };
   useEffect(() => {
-    const loadProduct = async () => {
-      if (params.id) {
-        console.log("en load product ", product);
-        const product = await getProduct(params.id);
-        setValue("nombre", product.nombre);
-        setValue("descripcion", product.descripcion);
-        setValue("precio", product.precio.toString());
-        setValue("stock", product.stock.toString());
-        // Cargar la imagen principal
-        if (product.image && product.image.principal) {
-          // Establecer la imagen principal en el estado local (mainImage)
-          setSelectedImage(product.image.principal.url);
-          // Puedes mostrar la imagen en un componente de vista previa si es necesario
-          // setPreviewMainImage(product.image.principal.url);
-        }
+    getProducts();
+  }, []);
+  const handleDelete = async (productId) => {
+    try {
+      const result = await Swal.fire({
+        title: "¿Estás seguro?",
+        text: "No podrás revertir esto.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Sí, eliminarlo",
+      });
 
-        // Cargar las imágenes adicionales
-        if (product.image && product.image.adicionales) {
-          // Crear un array de URLs de imágenes adicionales
-          const additionalImagesUrls = product.image.adicionales.map(
-            (img) => img.url
-          );
-          // Establecer las imágenes adicionales en el estado local (additionalImages)
-          setAdditionalImages(additionalImagesUrls);
-       
-        }
+      if (result.isConfirmed) {
+        setSelectedProducts((prevSelected) => ({
+          ...prevSelected,
+          [productId]: false,
+        }));
+
+        await deleteProduct(productId);
+
+        Swal.fire("Eliminado", "El producto ha sido eliminado.", "success");
+        getProducts();
       }
-    };
-    loadProduct();
-  }, [params.id]);
+    } catch (error) {
+      console.error("Error al eliminar el producto:", error);
+      let errorMessage = "Hubo un problema al eliminar el producto.";
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        errorMessage = error.response.data.message;
+      }
+
+      Swal.fire("Error", errorMessage, "error");
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      const selectedProductIds = Object.keys(selectedProducts).filter(
+        (productId) => selectedProducts[productId]
+      );
+
+      if (selectedProductIds.length === 0) {
+        Swal.fire(
+          "Selecciona productos",
+          "Por favor, selecciona productos para eliminar.",
+          "info"
+        );
+        return;
+      }
+
+      const result = await Swal.fire({
+        title: "¿Estás seguro?",
+        text: "No podrás revertir esto.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Sí, eliminarlos",
+      });
+
+      if (result.isConfirmed) {
+        for (const productId of selectedProductIds) {
+          await deleteProduct(productId);
+        }
+
+        Swal.fire(
+          "Eliminados",
+          "Los productos han sido eliminados.",
+          "success"
+        );
+        getProducts();
+        setSelectedProducts({}); // Limpiar la lista de productos seleccionados
+      }
+    } catch (error) {
+      console.error("Error al eliminar los productos:", error);
+      let errorMessage = "Hubo un problema al eliminar los productos.";
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        errorMessage = error.response.data.message;
+      }
+
+      Swal.fire("Error", errorMessage, "error");
+    }
+  };
+  const handleCheckboxChange = (productId) => {
+    setSelectedProducts((prevSelected) => {
+      return {
+        ...prevSelected,
+        [productId]: !prevSelected[productId],
+      };
+    });
+  };
+  const toggleModal = (productId) => {
+    if(productId ===null){
+    setEditingProductId(null); 
+
+    }else{setEditingProductId(productId)}
+    
+    setIsModalOpen(!isModalOpen);
+  };
+  const closeModal = () => {
+    console.log("cerrando modal")
+    setIsModalOpen(false);
+    setEditingProductId(null);
+    // reset()
+    
+  };
+
   return (
-    <Card>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Label htmlFor="nombre">Nombre</Label>
-        <Input
-          type="text"
-          name="nombre"
-          placeholder="Nombre"
-          {...register("nombre")}
-          autoFocus
-        />
-        {errors.nombre?.message && (
-          <p className="text-red-500 text-xs italic">
-            {errors.nombre?.message}
-          </p>
-        )}
+    <>
+      <div className="shopping-cart section">
+        <div className="container">
+          <br></br>
+          <div className="row">
+            <div class="col-md-6  text-start">
+              <h1 class=" text-success fs-2">Lista de Productos</h1>
+            </div>
+            <div class="col-md-6 d-flex align-items-center justify-content-end">
+              <button
+                className="btn btn-danger  px-3"
+                onClick={handleDeleteSelected}
+                disabled={!Object.values(selectedProducts).some((value) => value)}
+              >
+                Borrar
+              </button>
+              <button onClick={()=>toggleModal(null)} class="btn btn-success btn-lg px-3">
+                Crear Producto
+              </button>
+            </div>
+            <br></br>
+            <br></br>
 
-        <Label htmlFor="descripcion">Descripción</Label>
-        <Textarea
-          name="descripcion"
-          placeholder="Descripción"
-          {...register("descripcion")}
-        />
-        {errors.descripcion?.message && (
-          <p className="text-red-500">{errors.descripcion?.message}</p>
-        )}
+            <div className="col-12">
+              <table className="table shopping-summery">
+                <thead>
+                  <tr className="main-hading">
+                    <th className="text-start">Producto</th>
+                    <th className="text-start"> Imagen</th>
+                    <th className="text-start">Precio</th>
+                    <th className="text-start">Accion</th>
+                    <th className="text-start">Seleccionar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((product) => (
+                    <tr key={product._id}>
+                      <td>{product.nombre}</td>
 
-        <Label htmlFor="precio">Precio</Label>
-        <Input
-          type="text"
-          name="precio"
-          placeholder="Precio"
-          {...register("precio")}
-        />
-        {errors.precio?.message && (
-          <p className="text-red-500">{errors.precio?.message}</p>
-        )}
+                      <td style={{ display: "none" }}>{product.descripcion}</td>
+                      <td>
+                        <img
+                          class="rounded-circle"
+                          style={{ width: "35px", height: "35px" }}
+                          src={product.image.principal.url}
+                          alt="#"
+                        />
+                      </td>
 
-        <Label htmlFor="stock">Stock</Label>
-        <Input
-          type="text"
-          name="stock"
-          placeholder="Stock"
-          {...register("stock")}
-        />
-        {errors.stock?.message && (
-          <p className="text-red-500">{errors.stock?.message}</p>
-        )}
+                      <td>{product.precio}</td>
 
-        <Label htmlFor="image">Imagen</Label>
-        <Input
-          type="file"
-          name="image"
-          accept="image/*"
-          onChange={handleChange}
-        />
-        {errors.image?.message && (
-          <p className="text-red-500">{errors.image.message}</p>
-        )}
-        <Label htmlFor="additionalImages">Imágenes adicionales</Label>
-        <Input
-          type="file"
-          name="additionalImages"
-          accept="image/*"
-          multiple
-          onChange={handleChange}
-        />
-        <Button>Guardar</Button>
-      </form>
-    </Card>
+                      <td>
+                        <a onClick={() => toggleModal(product._id)} className=" pe-4">
+                          <i class="fa-sharp fa-solid fa-pen-to-square"></i>
+                        </a>
+                        <a onClick={() => handleDelete(product._id)}>
+                          <i className="fa-sharp fa-solid fa-trash"></i>
+                        </a>
+                      </td>
+                      <td>
+                        <div className="checkProduct">
+                          <div className="checkbox">
+                            <label
+                              className={`checkbox-inline ${
+                                selectedProducts[product._id] ? "checked" : ""
+                              }`}
+                              htmlFor={`checkbox-${product._id}`}
+                            >
+                              {" "}
+                              <input
+                                type="checkbox"
+                                onChange={() =>
+                                  handleCheckboxChange(product._id)
+                                }
+                                checked={selectedProducts[product._id] || false}
+                                id={`checkbox-${product._id}`}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ModalProducto isOpen={isModalOpen} closeModal={closeModal} productId={editingProductId} />
+    </>
   );
 }

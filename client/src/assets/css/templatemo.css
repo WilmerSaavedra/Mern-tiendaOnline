@@ -37,11 +37,11 @@ body{
 main {
   flex: 1; /* Esto empujará el contenido principal para llenar el espacio disponible restante */
 }
-body, ul, li, p, a, label, input, div {
+/* body, ul, li, p, a, label, input, div {
   font-family: 'Roboto', sans-serif;
   font-size: 18px !important;
   font-weight: 300 !important;
-}
+} */
 .h1 {
   font-family: 'Roboto', sans-serif;
   font-size: 48px !important;
@@ -69,6 +69,10 @@ body, ul, li, p, a, label, input, div {
 .btn-success {
   background-color: #59ab6e !important;
   border-color: #56ae6c !important;
+}
+.btn-danger {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
 }
 .pagination .page-link:hover {color: #000;}
 .pagination .page-link:hover, .pagination .page-link.active {

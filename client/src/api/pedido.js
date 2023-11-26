@@ -3,7 +3,7 @@ import axios from "./axios"
 export const getPedidosRequest=()=>{
     return axios.get("/pedido/listar")
 }
-export const getPedidoRequest = async (id) => axios.get(`/pedido/${id}`);
+export const getPedidoRequest = async (id) => axios.get(`/pedido/obtener/${id}`);
 
 export const getPedidoXUsuaioRequest = async (idUsuario) => axios.get(`/pedido/ListarxUsuario/${idUsuario}`);
 

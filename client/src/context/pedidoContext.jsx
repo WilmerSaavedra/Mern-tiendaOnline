@@ -55,6 +55,7 @@ export function PedidoProvider({children}) {
     } catch (error) {
       console.log(error);
       setDatosClienteValidos(false)
+      setErrors([error.response.data.message]);
     }
   };
 
@@ -80,6 +81,7 @@ export function PedidoProvider({children}) {
       await updatePedidoRequest(id, pedido);
     } catch (error) {
       console.error(error);
+      setErrors([error.response.data.message]);
     }
   };
   return (

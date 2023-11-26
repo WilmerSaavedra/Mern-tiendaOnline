@@ -55,21 +55,7 @@ export const createPago = async (req, res) => {
   //     })
   //     .catch((error) => console.log(error));
 };
-export const receiveWebhook= async(req, res)=>{
-  try {
-    const payme= req.query
-    const payment = new Payment(client);
-   if(payme.type==="payment"){
-    await payment.findById(payme['data.id'])
-  console.log('payme', payme);
-   }
-  } catch (error) {
-  console.log('error', error)
-    
-  }
 
- 
-}
 // import Culqi  from "culqi-node";
 // const culqi = new Culqi({
 //     privateKey: 'sk_test_xxxxxxxxxxxxxxxx',

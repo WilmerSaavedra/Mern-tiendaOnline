@@ -32,46 +32,45 @@ import { LineaTiempo } from "../components/LineaTiempo";
 
 export const PedidoForm = () => {
   initMercadoPago("TEST-337ea3bf-0a3c-4745-bcc1-bb4a24f8c6c4");
+
   const { listaCarrito } = useCarrito();
-  const { createPago } = usePago();
   const {
     setDatosClienteValidos,
     createPedido,
     errors: pedidoErrors,
   } = usePedido();
+  const { user } = useAuth();
+
+  const {
+    register,
+    setValue,
+    getValues,
+    handleSubmit,
+    trigger,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(pedidoSchema),
+    shouldUnregister: true,
+  });
+
   const [preferenceId, setPreferenceId] = useState();
   const [mostrarWallet, setMostrarWallet] = useState(false);
   const [mostrarBotonPaypal, setMostrarBotonPaypal] = useState(false);
   const [mostrarBotonCash, setMostrarBotonCash] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [metodoPago, setMetodoPago] = useState("Paypal");
   const navigate = useNavigate();
-  const formRef = useRef(null);
+
   const envio = JSON.parse(localStorage.getItem("envioGratis"));
-  console.log("isEnvio", envio);
   const subtotal = calcularSubTotal(listaCarrito);
   const descuento = calcularDescuento(listaCarrito);
   const total = calcularTotal(listaCarrito, 10);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    getValues,
-    trigger,
-    reset,
-  } = useForm({
-    resolver: zodResolver(pedidoSchema),
-    shouldUnregister: true,
-  });
-  const { user } = useAuth();
 
-  const [metodoPago, setMetodoPago] = useState("Paypal");
   useEffect(() => {
-    // Reinicia datosClienteValidos a false cuando el formulario se monta.
     setDatosClienteValidos(false);
   }, []);
+
   useEffect(() => {
-    // Verificar el método de pago al cargar la página
     if (metodoPago === "Paypal") {
       setMostrarBotonPaypal(true);
     } else if (metodoPago === "Mercado Pago") {
@@ -80,27 +79,19 @@ export const PedidoForm = () => {
       setMostrarBotonCash(true);
     }
   }, [metodoPago]);
-  console.log("preferenceId",preferenceId) 
-  console.log("metodoPago",metodoPago) 
 
-  const onSubmit = async (data) => {
+  const onSubmit = async () => {
+    const data = getValues();
+
     try {
       setIsLoading(true);
-
-      const pagoData = listaCarrito.map((item) => ({
-        id: item.id,
-        nombre: item.nombre,
-        precio: Number(item.precio),
-        cantidad: item.cantidad,
-      }));
-      console.log("userf", user);
       const pedidoData = {
         usuario: {
           _id: user.id,
           nombre: data.nombre,
           apellido: data.apellido,
-          telefono: data.telefono,
           dni: data.dni,
+          telefono: data.telefono,
           email: user.email,
         },
         ordenItems: listaCarrito.map((item) => ({
@@ -113,61 +104,53 @@ export const PedidoForm = () => {
           localidad: data.localidad,
         },
         metodoPago,
-        // pagoResultado: {
-        //   id: data.paymentId,
-        //   status: data.paymentStatus,
-        //   update_time: data.paymentUpdateTime,
-        //   email_address: data.emailAddress,
-        // },
         precioTotal: parseInt(total),
         estadoPedido: "pendiente",
         fechaPedido: new Date(),
         delivery: envio ? true : false,
         fechaDelivery: addFechaDelivery(new Date(), 4),
       };
-      console.log(pedidoData);
-      console.log("pagoData", pagoData);
+      console.log("pedidoData :>> ", pedidoData);
 
       const respuesta = await createPedido(pedidoData);
-      // console.log("respuesta", respuesta.init_point);
-      // const id = await createPago(pagoData);
-      // console.log("createPago(pagoData) id ", id);
+
+      console.log("respuesta createPedido  :>> ", respuesta);
+
       if (metodoPago === "Mercado Pago") {
-        if (respuesta.id) {
-          // window.location.href=respuesta.init_point
-          const preferenceId = respuesta.id;
-          setPreferenceId(preferenceId)
-           // Supongo que el ID está en respuesta.id, verifica que sea el lugar correcto
-          // localStorage.setItem("preferenceId", preferenceId);
-          // sessionStorage.setItem("pasoActual", "3");
-          // navigate("/pago");
+        if (respuesta.result.id) {
+          const preferenceId = respuesta.result.id;
+          setPreferenceId(preferenceId);
+
+          const storedOrdenId = respuesta.result.external_reference;
+          window.location.replace(respuesta.result.init_point);
+          
+          localStorage.setItem("OrdenId", storedOrdenId);
+        } else {
+          console.error("Error al iniciar el proceso de pago.");
         }
       }
-      console.log("preferenceId",preferenceId)  
-      //  else {
-      //   navigate("/about");
-      // }
-
-      // sessionStorage.setItem("pasoActual", "3");
-      // await navigate("/pago");
     } catch (error) {
       console.log(error);
-    }finally {
-      setIsLoading(false); // Finaliza la carga después de recibir una respuesta (éxito o error)
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleInputChange = (e, name, maxLength) => {
+  const handleInputChange = (e) => {
     const inputValue = e.target.value;
+    const inputName = e.target.name;
+
     let valorLimitado;
-    if (name === "dni" || name === "telefono") {
-      valorLimitado = handleInputNumerico(inputValue, maxLength, name);
+    if (inputName === "dni" || inputName === "telefono") {
+      valorLimitado = handleInputNumerico(inputValue, inputName);
     } else {
-      valorLimitado = handleInputLetras(inputValue, maxLength, name);
+      valorLimitado = handleInputLetras(inputValue, inputName);
     }
-    setValue(name, valorLimitado);
-    trigger(name);
+
+    setValue(inputName, valorLimitado);
+    trigger(inputName);
   };
+
   return (
     <>
       <section className="shop checkout section">
@@ -216,9 +199,7 @@ export const PedidoForm = () => {
                             item.label === "email" && user ? user.email : ""
                           }
                           {...register(item.label)}
-                          onChange={(e) =>
-                            handleInputChange(e, item.label, item.maxLength)
-                          }
+                          onChange={handleInputChange}
                         />
                         {errors[item.label] && (
                           <Message message={errors[item.label].message} />
@@ -242,9 +223,7 @@ export const PedidoForm = () => {
                           }`}
                           required
                           {...register(item.label)}
-                          onChange={(e) =>
-                            handleInputChange(e, item.label, item.maxLength)
-                          }
+                          onChange={handleInputChange}
                         />
                         {errors[item.label] && (
                           <Message message={errors[item.label].message} />
@@ -255,6 +234,7 @@ export const PedidoForm = () => {
                       <Select
                         className="form-select"
                         {...register("localidad")}
+                        onChange={handleInputChange}
                       >
                         {generateLocalidadOptions().map((option) => (
                           <option key={option.value} value={option.value}>
@@ -272,6 +252,7 @@ export const PedidoForm = () => {
                         name="direccion"
                         label="Ingrese su direccion"
                         required
+                        onChange={handleInputChange}
                         {...register("direccion")}
                       />
                       {errors.direccion && (
@@ -284,14 +265,16 @@ export const PedidoForm = () => {
                         type="text"
                         name="referencia"
                         label="Ingrese una referencia de direccion"
-                        required="required"
+                        required
                         {...register("referencia")}
+                        onChange={handleInputChange}
                       />
                       {errors.referencia && (
                         <Message message={errors.referencia.message} />
                       )}
                     </div>
                   </div>
+                  {/* <button >hola</button> */}
                 </form>
 
                 {/* </form> */}
@@ -411,25 +394,27 @@ export const PedidoForm = () => {
                   <div className="content">
                     <div className="button">
                       {mostrarWallet && (
-                        <button form="CreateForm" type="submit" className="btn btn-success"
-                        // disabled={preferenceId !== undefined}
+                        <button
+                          form="CreateForm"
+                          type="submit"
+                          className="btn btn-success"
+                          // disabled={preferenceId !== undefined}
                         >
-                         {isLoading ? (
-                    <Spinner color="primary" className="mx-2" /> // Icono de carga
-                  ) : (
-                    "Mercado Pago" // Texto del botón
-                  )}
-                        
+                          {isLoading ? (
+                            <Spinner color="primary" className="mx-2" /> // Icono de carga
+                          ) : (
+                            "Mercado Pago" // Texto del botón
+                          )}
                         </button>
                       )}
-                      {preferenceId && mostrarWallet && (
+                      {/* {preferenceId && mostrarWallet && (
                         <Wallet
                           initialization={{
                             preferenceId: preferenceId,
                             redirectMode: "modal",
                           }}
                         ></Wallet>
-                      )}
+                      )} */}
                       {mostrarBotonPaypal && (
                         <button
                           form="CreateForm"

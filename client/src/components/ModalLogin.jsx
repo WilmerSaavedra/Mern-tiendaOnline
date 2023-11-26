@@ -10,7 +10,8 @@ import { HiOutlineLogin } from "react-icons/hi";
 import { MdAccountCircle } from "react-icons/md";
 import { useCarrito } from "../context/carritoContext";
 import { obtenerCantidadTotalEnCarrito } from "../reducers/utilCarritoReducer";
-import {Modals} from "./ui/Modals";
+import {Modals} from "../components/ui"
+
 import {
   FaFacebookF,
   FaInstagram,
@@ -114,7 +115,7 @@ export function ModalLogin({isOpen, closeModal }) {
   };
 
   return (
-    <Modals isOpen={isOpen} closeModal={closeModal} size="md">
+    <Modals  isOpen={isOpen} closeModal={closeModal} size="md">
       <MDBNavbar
         className="nav nav-pills nav-justified mb-3"
         style={{ boxShadow: "none" }}

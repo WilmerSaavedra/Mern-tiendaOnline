@@ -47,11 +47,15 @@ export function ProductProvider({ children }) {
 
   const createProduct = async (product) => {
     try {
+      console.log("createProduct------" + JSON.stringify(product));
       const res = await createProductRequest(product);
       setProducts([...products, res.data]);
-      console.log("------" + res.data);
+      console.log("------" + res.data); 
+      return res.data;
     } catch (error) {
+      
       console.log(error);
+      setErrors([error.response.data.message]);
     }
   };
 
@@ -66,9 +70,12 @@ export function ProductProvider({ children }) {
 
   const updateProduct = async (id, product) => {
     try {
-      await updateProductRequest(id, product);
+      const res=await updateProductRequest(id, product);
+      return res.data;
     } catch (error) {
+
       console.error(error);
+      setErrors([error.response.data.message]);
     }
   };
 

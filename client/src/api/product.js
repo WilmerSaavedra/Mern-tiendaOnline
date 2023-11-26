@@ -4,28 +4,31 @@ export const getProductSRequest = async () =>{
  return axios.get("/product/listar");
 } 
 
-export const createProductRequest = async (product) =>{
-  console.log("Product.js",product)
+export const createProductRequest = async (product) => {
+  const form = new FormData();
 
-  const form=new FormData()
+  // Agrega propiedades al FormData excepto imágenes
   for (let key in product) {
-    if (key === "image") {
-      form.append("image", product.image); 
-    } else {
+    if (key !== "imagenPrincipal" ) {
       form.append(key, product[key]);
     }
   }
- return axios.post("/product", form,{
-    headers:{
-      "Content-Type":"multipart/form-data"
-    }
+  // Agrega imagen principal al FormData
+  if (product.imagenPrincipal) {
+    form.append("imagenPrincipal", product.imagenPrincipal[0]);
+  }
+
+  return axios.post("/product/crear", form, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
-} 
+};
 
 export const updateProductRequest = async (id,product) =>
-  axios.put(`/product/${id}`, product);
+  axios.put(`/product/editar/${id}`, product);
 
-export const deleteProductRequest = async (id) => axios.delete(`/product/${id}`);
+export const deleteProductRequest = async (id) => axios.delete(`/product/eliminar/${id}`);
 
-export const getProductRequest = async (id) => axios.get(`/product/${id}`);
+export const getProductRequest = async (id) => axios.get(`/product/obtener/${id}`);
 

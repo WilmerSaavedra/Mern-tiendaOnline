@@ -1,7 +1,7 @@
 import { FaMinus, FaPlus, FaTrashAlt } from "react-icons/fa";
 import { useCarrito } from "../context/carritoContext";
 import { Link, useNavigate, NavLink } from "react-router-dom";
-import {LineaTiempo} from '../components/LineaTiempo';
+import { LineaTiempo } from "../components/LineaTiempo";
 
 import {
   calcularTotal,
@@ -19,14 +19,14 @@ export const CarritoPages = () => {
     actualizarCantidad,
     actualizarCarrito,
   } = useCarrito();
-// console.log("listaCarrito cant",listaCarrito.length)
-
+  // console.log("listaCarrito cant",listaCarrito.length)
+const navigate=useNavigate();
   const [envioGratis, setEnvioGratis] = useState(() => {
     const envio = JSON.parse(localStorage.getItem("envioGratis"));
     return envio ? true : false;
   });
   // Cambia el estado de envío gratis si el carrito no está vacío
-    const handleEnvioGratisChange = () => {
+  const handleEnvioGratisChange = () => {
     if (listaCarrito.length !== 0) {
       const nuevoEstado = !envioGratis;
       setEnvioGratis(nuevoEstado); // Primero actualiza el estado
@@ -40,7 +40,7 @@ export const CarritoPages = () => {
     const nuevoCarrito = listaCarrito.filter((producto) => producto._id !== id);
     actualizarCarrito(nuevoCarrito);
     updateSessionStorage(nuevoCarrito);
-    setEnvioGratis(false)
+    setEnvioGratis(false);
     localStorage.setItem("envioGratis", JSON.stringify(false));
   };
 
@@ -90,13 +90,23 @@ export const CarritoPages = () => {
   const closeModal = () => {
     setIsModalOpen(false);
   };
+  const handleCheckoutClick = (e) => {
+    e.preventDefault();
+    if (isAuthenticated) {
+      console.log("Usuario autenticado, navegando a /pedido");
+      sessionStorage.setItem("pasoActual", "2");
+      navigate("/pedido");
+    } else {
+      toggleModal()
+    }
+   
+  };
   return (
     <>
       <div className="shopping-cart section">
         <div className="container">
-     
-      <LineaTiempo  ></LineaTiempo>
-<br></br>
+          <LineaTiempo></LineaTiempo>
+          <br></br>
           <div className="row">
             <div className="col-12">
               <table className="table shopping-summery">
@@ -247,13 +257,21 @@ export const CarritoPages = () => {
                       </ul>
                       <div className="button5 d-flex flex-column align-items-center">
                         <Link
-                          to={isAuthenticated ? "/pedido" : "#"}
-                          onClick={!isAuthenticated ? toggleModal : undefined}
-                          className="btn btn-primary  text-center"
-                          style={listaCarrito.length === 0 ? { pointerEvents: "none", opacity: 0.6 } : {}} >
+                          onClick={handleCheckoutClick}
+                          className="btn btn-primary text-center"
+                          style={
+                            listaCarrito.length === 0
+                              ? { pointerEvents: "none", opacity: 0.6 }
+                              : {}
+                          }
+                        >
                           Checkout
                         </Link>
-                        <Link to="/shop" href="#" className="btn btn-primary text-center">
+                        <Link
+                          to="/shop"
+                          href="#"
+                          className="btn btn-primary text-center"
+                        >
                           Continue shopping
                         </Link>
                       </div>

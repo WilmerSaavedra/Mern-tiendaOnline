@@ -1,7 +1,78 @@
-
 /*======================================
    Start Shopping Cart CSS
 ========================================*/
+
+
+input[type="file"].custom {
+	border: 0;
+	clip: rect(0, 0, 0, 0);
+	height: 1px;
+	overflow: hidden;
+	padding: 0;
+	position: absolute !important;
+	white-space: nowrap;
+	width: 1px;
+  }
+.checkProduct .checkbox label {
+	font-size: 15px;
+	font-weight: 400;
+	color: #010101;
+	position: relative;
+	/* padding-left: 30px; */
+}
+.checkProduct .checkbox label:hover{
+	cursor:pointer;
+}
+.checkProduct .checkbox label input{
+	display:none;
+}
+.checkProduct .checkbox label::before {
+	position: absolute;
+	content: "";
+	left: 0;
+	top: -14px;
+	width: 16px;
+	height: 16px;
+	border: 1px solid #555555;
+	border-radius: 0px;
+}
+.checkProduct .checkbox label::after {
+	position: absolute;
+	content: "\2713";
+	font-family: "Fontawesome";
+	width: 22px;
+	height: 22px;
+	line-height: 24px;
+	left: 3px;
+	top: -17px;
+	opacity: 0;
+	visibility: hidden;
+	transform: scale(0);
+	-webkit-transition: all 0.4s ease;
+	-moz-transition: all 0.4s ease;
+	transition: all 0.4s ease;
+	display: block;
+	font-size: 11px;
+}
+.checkProduct .checkbox label.checked::after{
+	opacity:1;
+	visibility:visible;
+	transform:scale(1);
+}
+
+.fa-trash { 
+    color:#51461f;
+}
+.fa-trash:hover { 
+    color:#dc4c64;
+}
+.fa-pen-to-square { 
+    color:#51461f;
+}
+.fa-pen-to-square:hover { 
+    color:#64b077;
+}
+
 .table.shopping-summery {
 	background: #fff;
 }

@@ -34,25 +34,9 @@ export function LineaTiempo() {
       } else if (!datosClienteValidos) {
         actualizarEnSession = false;
         console.log("Los datos de pedido están vacíos o no son válidos.");
-      } else {
-        // Si los datos del cliente son válidos, avanzamos al paso 3
-        paso = 3;
-        actualizarEnSession = true;
       }
-    } else if (paso === 3) {
-      console.log("datosClienteValidos", datosClienteValidos);
-
-      if (!datosClienteValidos) {
-        paso = 2;
-        actualizarEnSession = false;
-        console.log("Los datos de pedido vacio.");
-      } else {
-        actualizarEnSession = true;
-      }
-      console.log("paso 3.", paso);
-    } else if (paso === 4) {
-      // Comprobaciones del paso 4
-      // Implementa tus comprobaciones y establece actualizarEnSession en false si no son válidas
+    } else {
+      actualizarEnSession = true;
     }
 
     if (actualizarEnSession) {
@@ -67,12 +51,6 @@ export function LineaTiempo() {
         break;
       case 2:
         await navigate("/pedido");
-        break;
-      case 3:
-        await navigate("/pago");
-        break;
-      case 4:
-        await navigate("/confirmacion");
         break;
       default:
         break;
@@ -99,7 +77,7 @@ export function LineaTiempo() {
               </div>
             </li>
 
-            <li id="steps--two">
+            {/* <li id="steps--two">
               <div>
                 <Link
                   className={`step__circle step__circle--two ${
@@ -111,11 +89,11 @@ export function LineaTiempo() {
                   <p className="step__circle--text">2</p>
                   <p className="step__circle--icon">✓</p>
                 </Link>
-                <p className="step__text">Información</p>
+                <p className="step__text">Revision y Pago</p>
               </div>
-            </li>
+            </li> */}
 
-            <li id="steps--three">
+            {/* <li id="steps--three">
               <div>
                 <Link
                   className={`step__circle step__circle--three ${
@@ -128,19 +106,20 @@ export function LineaTiempo() {
                 </Link>
                 <p className="step__text">Pago</p>
               </div>
-            </li>
+            </li> */}
             <li id="steps--four">
               <div>
-                <Link
-                  className={`step__circle step__circle--four ${
-                    pasoActual >= 4 ? "step__active" : ""
+              <Link
+                  className={`step__circle step__circle--two ${
+                    pasoActual >= 2 ? "step__active" : ""
                   }`}
-                  onClick={(e) => handlePasoClick(4, e)}
+                  // to="/pedido"
+                  onClick={(e) => handlePasoClick(2, e)}
                 >
-                  <p className="step__circle--text">4</p>
+                  <p className="step__circle--text">2</p>
                   <p className="step__circle--icon">✓</p>
                 </Link>
-                <p className="step__text">Confirmación</p>
+                <p className="step__text">Revision y Pago</p>
               </div>
             </li>
           </ul>

@@ -1,12 +1,11 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { useAuth } from "../context/authContext";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { ButtonLink } from "./ui/ButtonLink";
 
 import { loginSchema, registerSchema } from "../schemas/auth";
-import { Link, useNavigate, NavLink } from "react-router-dom";
+import { Link, useNavigate, NavLink, useNavigation } from "react-router-dom";
 import { Card, Message, Button, Input, Label } from "./ui";
 import { HiOutlineLogin } from "react-icons/hi";
 import { MdAccountCircle } from "react-icons/md";
@@ -50,7 +49,7 @@ export function Navbar() {
     isAuthenticated,
     user,
   } = useAuth();
-
+  const navigate=useNavigate()
   useEffect(() => {
     if (isAuthenticated) {
       closeModal();
@@ -241,13 +240,13 @@ export function Navbar() {
                 )}
               </ul>
             </div>
-            <div className="navbar align-self-center d-flex">
+            <div className=" align-self-center d-flex" >
               <div className="d-lg-none flex-sm-fill mt-3 mb-4 col-7 col-sm-auto pr-3"></div>
               {isAuthenticated ? (
                 <>
                   <a
                     href="#"
-                    className="nav-icon d-none d-lg-inline"
+                    className="nav-icon d-none d-lg-inline px-4"
                     to="/register"
                     onClick={() => {
                       logout();
@@ -273,7 +272,7 @@ export function Navbar() {
                     style={{ boxShadow: "none important!" }}
                     to="#"
                     onClick={toggleModal}
-                    className="nav-icon position-relative text-decoration-none"
+                    className="nav-icon position-relative text-decoration-none px-4"
                   >
                     <i className="fas fa-user"></i>
                     <span className="px-2">Ingresar </span>

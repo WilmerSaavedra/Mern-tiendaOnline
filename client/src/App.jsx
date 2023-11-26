@@ -39,7 +39,9 @@ function App() {
                     element={<DetalleProducto />}
                   />
                   <Route path="/about" element={<AboutPages />} />
+                  <Route element={<ProtectedRoute />}>
                   <Route path="/product" element={<ProductForm />} />
+                  </Route>
                   <Route path="/shop" element={<ProductsPage />} />
                   <Route path="/contact" element={<ContactForm />} />
                   <Route path="/pago" element={<PagoForm />} />

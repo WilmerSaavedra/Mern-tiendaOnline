@@ -21,7 +21,7 @@ const ordenSchema = new mongoose.Schema(
       id: String,
       status: String,
       update_time: String,
-      email_address: String,
+      transaction_amount:String,
     },
     precioTotal: Number,
     estadoPedido: {
