@@ -5,6 +5,7 @@ import { TOKEN_SECRET } from "../config.js";
 import { createAccessToken } from "../libs/jwt.js";
 import { handleFailedLogin } from "../middlewares/auth.middleware.js";
 import nodemailer from "nodemailer";
+import { ObjectId } from 'mongodb';
 
 export const register = async (req, res) => {
   try {
@@ -116,6 +117,7 @@ export const verifyToken = async (req, res) => {
       id: userFound._id,
       username: userFound.username,
       email: userFound.email,
+      isAdmin: userFound.isAdmin,
     });
   });
 };
@@ -132,22 +134,13 @@ export const logout = async (req, res) => {
 export const sendEmail = async (req, res) => {
   try {
     const {
-      username: userNombre,
-      email: userEmail,
+      username,
+      email,
       subject,
       message,
     } = req.body;
-    let senderEmail, senderName;
-
-    // Verifica si el usuario está autenticado
-    if (req.user) {
-      senderEmail = req.user.email;
-      senderName = req.user.username;
-    } else {
-      // Si el usuario no está autenticado, usa los datos del formulario
-      senderEmail = userEmail;
-      senderName = userNombre;
-    }
+    
+   
     const transporter = nodemailer.createTransport({
       host: "sandbox.smtp.mailtrap.io",
       port: 2525,
@@ -160,10 +153,10 @@ export const sendEmail = async (req, res) => {
     });
 
     const mailOptions = {
-      from: senderEmail,
+      from: email,
       to: "destinatario@gmail.com",
       subject: subject,
-      text: `Nombre: ${senderName}\nCorreo electrónico: ${senderEmail}\nMensaje: ${message}`,
+      text: `Nombre: ${username}\nCorreo electrónico: ${email}\nMensaje: ${message}`,
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
@@ -175,12 +168,135 @@ export const sendEmail = async (req, res) => {
       } else {
         console.log("Correo electrónico enviado:", info.response);
         return res.json({
-          message:`hola ${senderName}, su mensaje a sido enviado en breve nos comunicaremos con usted`,
+          message: `hola ${username}, su mensaje a sido enviado en breve nos comunicaremos con usted`,
         });
       }
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID de usuario no válido" });
+    }
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const getUsers = async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const updateUserById = async (req, res) => {
+  try {
+    const { username, email, isAdmin } = req.body;
+    await User.findByIdAndUpdate(req.params.id, {
+      username,
+      email,
+      isAdmin,
+    });
+    res.json({ message: "Usuario actualizado exitosamente" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const deleteUserById = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "Usuario eliminado exitosamente" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
 
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Genera un token único para restablecer la contraseña
+    const resetToken = await bcrypt.hash(user.email, 10);
+
+    // Guarda el token en el usuario
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hora de expiración
+
+    await user.save();
+
+    // Configura el transporte de nodemailer
+    const transporter = nodemailer.createTransport({
+      host: "sandbox.smtp.mailtrap.io",
+      port: 2525,
+      secure: false,
+      auth: {
+        user: "b23603876f00e3",
+        pass: "34a009ebe0a814",
+      },
+      debug: true,
+    });
+
+    // Construye el enlace de restablecimiento de contraseña
+    const resetLink = `http://localhost:5173/reset-password/${resetToken}`;
+
+    // Configura el correo electrónico
+    const mailOptions = {
+      from: "tu_correo@gmail.com",
+      to: user.email,
+      subject: "Recuperación de Contraseña",
+      text: `Hola ${user.username},\n\n
+        Has solicitado restablecer tu contraseña. Haz clic en el siguiente enlace para continuar:\n
+        ${resetLink}\n\n
+        Si no solicitaste esto, ignora este correo y tu contraseña seguirá siendo la misma.\n`,
+    };
+
+    // Envía el correo electrónico
+    await transporter.sendMail(mailOptions);
+
+    res.json({
+      message:
+        "Se ha enviado un correo electrónico con instrucciones para restablecer la contraseña",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+export const obtenerUsuariosSinCliente = async (req, res) => {
+  try {
+    const usuariosSinCliente = await User.aggregate([
+      {
+        $lookup: {
+          from: "clientes", // Nombre de la colección de clientes
+          localField: "_id",
+          foreignField: "usuario",
+          as: "cliente",
+        },
+      },
+      {
+        $match: {
+          cliente: { $eq: [] },
+          isAdmin: false,
+        },
+      },
+    ]);
+
+    res.json(usuariosSinCliente);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
   }
 };

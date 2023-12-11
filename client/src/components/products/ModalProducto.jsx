@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Modals } from "../ui/Modals";
 import { Input, Button, Textarea, Message, Select } from "../ui";
 import { useProducts } from "../../context/productContext";
+import { useMarcas } from "../../context/marcaContext";
+
 import { useForm } from "react-hook-form";
 import { productSchema } from "../../schemas/product";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +19,7 @@ export function ModalProducto({ isOpen, closeModal, productId }) {
     getProduct,
     errors: productErrors,
   } = useProducts();
-
+  const { getMarcas, marcas } = useMarcas();
   const {
     register,
     handleSubmit,
@@ -44,6 +46,10 @@ export function ModalProducto({ isOpen, closeModal, productId }) {
   const [modalTitle, setModalTitle] = useState("Crear Producto");
 
   useEffect(() => {
+    getMarcas();
+  }, []);
+
+  useEffect(() => {
     if (productId !== null) {
       reset();
     }
@@ -61,12 +67,14 @@ export function ModalProducto({ isOpen, closeModal, productId }) {
           setValue("stock", String(productInfo.stock));
           setValue("genero", productInfo.genero);
           setValue("estilo", productInfo.estilo);
-          setValue("marca", productInfo.marca);
+          setValue("marca", productInfo.marca.nombre);
           setValue("tallas", productInfo.tallas);
           setValue("color", productInfo.color);
           setValue("esLanzamiento", productInfo.esLanzamiento);
           setValue("imagenPrincipal", productInfo.image.principal.url);
           setSelectedImage(productInfo.image.principal.url);
+        }else {
+          setModalTitle("Crear Producto");
         }
       } catch (error) {
         console.error(error);
@@ -80,7 +88,7 @@ export function ModalProducto({ isOpen, closeModal, productId }) {
   }, [getProduct, productId, setValue, watch]);
   const handleChange = (e) => {
     console.log("handleChange");
-    if (e.target.name === "imagenPrincipal") {
+    if (e.target.name === "imagenPrincipalEdit") {
       const selectedFile = e.target.files[0];
       console.log("imagenPrincipal", selectedFile);
       setValue("imagenPrincipal", selectedFile);
@@ -102,7 +110,11 @@ export function ModalProducto({ isOpen, closeModal, productId }) {
       console.log("data", ndata);
 
       const updatedData = { ...ndata };
-    
+
+      if (productId && !data.imagenPrincipal) {
+        // Modo de edición sin cambiar la imagen
+        delete updatedData.imagenPrincipal;
+      }
       if (productId) {
         await handleProductOperation(
           updateProduct,
@@ -202,8 +214,11 @@ export function ModalProducto({ isOpen, closeModal, productId }) {
                 {...register("marca")}
               >
                 <option value="">Seleccione Marca</option>
-                <option value="nike">Nike</option>
-                <option value="adidas">Adidas</option>
+                {marcas.map((marca) => (
+                  <option key={marca._id} value={marca.nombre}>
+                    {marca.nombre}
+                  </option>
+                ))}
               </Select>
               {formErrors.marca && (
                 <Message message={formErrors.marca.message} />
@@ -269,30 +284,36 @@ export function ModalProducto({ isOpen, closeModal, productId }) {
           </div>
 
           <div className="col-md-12 mt-4">
-            {productId && selectedImage && (
-              <div className="md-image">
-                <img
-                  src={
-                    selectedImage ||
-                    (productInfo?.image?.principal?.url
-                      ? productInfo.image.principal.url
-                      : "")
-                  }
-                  alt="Imagen seleccionada"
-                  className="img-fluid"
-                  style={{ maxHeight: "200px" }}
+            {productId ? (
+              // Para la edición
+              <>
+                {selectedImage && (
+                  <div className="md-image">
+                    <img
+                      src={selectedImage}
+                      alt="Imagen seleccionada"
+                      className="img-fluid"
+                      style={{ maxHeight: "200px" }}
+                    />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  name="imagenPrincipalEdit"
+                  accept="image/*"
+                  onChange={handleChange}
                 />
-              </div>
+              </>
+            ) : (
+              // Para la creación
+              <input
+                id={`imagenPrincipalInput-${Date.now()}`}
+                type="file"
+                name="imagenPrincipal"
+                accept="image/*"
+                {...register("imagenPrincipal")}
+              />
             )}
-            <input
-              id={`imagenPrincipalInput-${Date.now()}`}
-              type="file"
-              name="imagenPrincipal"
-              accept="image/*"
-              onChange={handleChange}
-              
-              // {...register("imagenPrincipal")}
-            />
           </div>
           {formErrors.imagenPrincipal && (
             <Message message={formErrors.imagenPrincipal.message} />

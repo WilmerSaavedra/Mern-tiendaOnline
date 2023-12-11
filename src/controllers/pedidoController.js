@@ -1,69 +1,90 @@
 import Orden from "../models/Orden.js";
 import Cliente from "../models/Cliente.js";
 import Usuario from "../models/Usuario.js";
-import Producto from "../models/Producto.js";
-import { FRONTEND_URL,NGROK_URL } from "../config.js";
-("../config.js");
-import {createMercadoPagoPreference,updateOrderWithPaymentInfo} from "../libs/mercadoPago.js"
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import isOnline from "is-online";
+import { validarStock } from "../helpers/util.js";
+import { FRONTEND_URL, NGROK_URL } from "../config.js";
+import {
+  createMercadoPagoPreference,
+  updateOrderWithPaymentInfo,
+} from "../libs/mercadoPago.js";
 import axios from "axios";
+
+const handleError = (res, status, message) => res.status(status).json({ message });
+const handleSuccess = (res, data) => res.json(data);
+
+const populateCliente = () => ({
+  path: "cliente",
+  select: "nombre apellido telefono dni _id",
+});
+
 export const getPedidos = async (req, res) => {
   try {
-    console.log("orden")
-    const pedidos = await Orden.find();
-    res.json(pedidos);
+    const pedidos = await Orden.find().populate(populateCliente());
+    handleSuccess(res, pedidos);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    handleError(res, 500, error.message);
   }
 };
 
 export const getPedidoId = async (req, res) => {
   try {
     const { id } = req.params;
-    const pedido = await Orden.findOne({ _id: id }).populate('cliente')
- console.log("pedido ",pedido)
+    const pedido = await Orden.findOne({ _id: id })
+      .populate(populateCliente())
+      .populate({
+        path: "ordenItems.producto",
+        model: "Product",
+        select: "nombre precio",
+      });
+
     if (!pedido) {
-      return res.status(404).json({ message: "Orden not found" });
+      return handleError(res, 404, "Orden not found");
     }
 
-    let clienteData = {
-      nombre: "Cliente no encontrado",
-      apellido: "",
-      dni: "",
-    };
+    const clienteData = pedido.cliente
+      ? {
+          nombre: pedido.cliente.nombre,
+          apellido: pedido.cliente.apellido,
+          dni: pedido.cliente.dni,
+          telefono: pedido.cliente.telefono,
+          _id: pedido.cliente._id,
+        }
+      : { nombre: "Cliente no encontrado", apellido: "", dni: "", telefono: "" };
 
-    if (pedido.cliente) {
-      clienteData = {
-        nombre: pedido.cliente.nombre,
-        apellido: pedido.cliente.apellido,
-        dni: pedido.cliente.dni,
-      };
-    }
+    const pedidoConDatosCliente = { ...pedido._doc, cliente: clienteData };
 
-    // Mapea el pedido para incluir los datos del cliente
-    const pedidoConDatosCliente = {
-      ...pedido._doc,
-      cliente: clienteData,
-    };
-
-    res.json(pedidoConDatosCliente);
+    handleSuccess(res, pedidoConDatosCliente);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    handleError(res, 500, error.message);
   }
 };
 
 export const getPedidosIdxIdUsuario = async (req, res) => {
   try {
     const { idUsuario } = req.params;
-    const productos = await Orden.find({ usuario: idUsuario });
-    res.json(productos);
+    const cliente = await Cliente.findOne({ usuario: idUsuario }).populate(
+      "usuario"
+    );
+
+    if (!cliente) {
+      return handleError(res, 404, "No se encontró un cliente para este usuario");
+    }
+
+    const productos = cliente !== null
+      ? await Orden.find({ cliente: cliente._id }).populate(populateCliente())
+      : {};
+
+    handleSuccess(res, productos);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    handleError(res, 500, error.message);
   }
 };
+
 export const createPedido = async (req, res) => {
   try {
     const {
+      failureUrl,
       usuario,
       ordenItems,
       DireccionEnvio,
@@ -75,20 +96,33 @@ export const createPedido = async (req, res) => {
       fechaDelivery,
     } = req.body;
 
-    const cliente = await Cliente.findOne({ usuario: usuario._id });
+    const io = req.io;
+    const isStock = await validarStock(ordenItems);
+console.log(usuario)
+    if (!isStock.success) {
+      const { errorDetails, productName } = isStock;
+      return res.status(400).json({
+        message: `No hay suficiente stock disponible para ${productName}.`,
+        errorDetails,
+      });
+    }
+
+    let cliente = await Cliente.findOne({ usuario: usuario._id });
 
     if (!cliente) {
-      const newCliente = new Cliente({
+      const newCliente = await Cliente.create({
         usuario: usuario._id,
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         telefono: usuario.telefono,
         dni: usuario.dni,
       });
-      await newCliente.save();
+
+      cliente = newCliente;
     }
-    const clienteId = cliente ? cliente._id : newCliente._id;
-    const nuevoPedido = new Orden({
+
+    const clienteId = cliente._id;
+    const nuevoPedido = await Orden.create({
       cliente: clienteId,
       ordenItems,
       DireccionEnvio,
@@ -102,124 +136,31 @@ export const createPedido = async (req, res) => {
 
     const resulPedido = await nuevoPedido.save();
     const id_orden = resulPedido._id.toString();
-    
-    const result = await createMercadoPagoPreference(ordenItems, usuario, `${NGROK_URL}/pedido/webhook`, id_orden);
+    const result = !usuario.isAdmin
+      ? await createMercadoPagoPreference(
+          ordenItems,
+          usuario,
+          `${NGROK_URL}/pedido/webhook`,
+          failureUrl,
+          id_orden
+        )
+      : {};
+
+    io.emit("pedidoCreado", { resulPedido });
 
     if (!result) {
       return res.status(500).json({
         message: "Error interno en el servidor para proceder mercado pago.",
       });
     }
-    res.status(201).json({
-      resulPedido,
-      result,
-    });
+
+    handleSuccess(res, { resulPedido, result });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Error interno en el servidor." });
+    handleError(res, 500, "Error interno en el servidor.");
   }
 };
-// export const createPedido = async (req, res) => {
-//   try {
-//     const {
-//       usuario,
-//       ordenItems,
-//       DireccionEnvio,
-//       metodoPago,
-//       precioTotal,
-//       estadoPedido,
-//       fechaPedido,
-//       isDelivery,
-//       fechaDelivery,
-//     } = req.body;
-//     console.log(req.body);
-//     const cliente = await Cliente.findOne({ usuario: usuario._id });
 
-//     if (!cliente) {
-//       const newCliente = new Cliente({
-//         usuario: usuario._id,
-//         nombre: usuario.nombre,
-//         apellido: usuario.apellido,
-//         telefono: usuario.telefono,
-//         dni: usuario.dni,
-//       });
-//       await newCliente.save();
-//     }
-
-//     // Crea una preferencia de Mercado Pago
-//     const client = new MercadoPagoConfig({
-//       accessToken:
-//         "TEST-3539892593181491-102401-7c1552ea411a979dd0883c30be9eb96e-1522496250",
-//     });
-//     const preference = new Preference(client);
-
-//     const items = await Promise.all(
-//       ordenItems.map(async (item) => {
-//         const productDetails = await Producto.findById(item.producto);
-//         return {
-//           title: productDetails.nombre, 
-//           currency_id: "PEN", 
-//           quantity: item.cantidad, 
-//           unit_price: Number(productDetails.precio), unitario
-//         };
-//       })
-//     );
-
-//     const body = {
-//       items: items,
-//       payer: {
-//         name: usuario.nombre,
-//         surname: usuario.apellido,
-//         email: usuario.email,
-//         phone: { area_code: "+51", number: usuario.telefono },
-//         identification: {
-//           type: "DNI",
-//           number: usuario.dni, 
-//         },
-//       },
-//       back_urls: {
-//         success: `${FRONTEND_URL}/shop`,
-//         failure: "https://www.failure.com",
-//         pending: "https://www.pending.com",
-//       },
-//       notification_url: "https://cbc5-190-236-7-151.ngrok.io/pedido/webhook",
-//       external_reference: id_orden,
-//     };
-//     console.log("preferenceData", body);
-
-
-//     const result = await preference.create({ body }).catch((error) => {
-//       console.log(error);
-//       return res.status(500).json({
-//         message: "Error interno en el servidor para proceder mercado pago.",
-//       });
-//     });
-//     console.log("preferenceResponse", result);
-//     // Crea el pedido y guarda el ID de la preferencia
-//     const nuevoPedido = new Orden({
-//       cliente: usuario._id,
-//       ordenItems,
-//       DireccionEnvio,
-//       metodoPago,
-//       precioTotal: parseInt(precioTotal),
-//       estadoPedido,
-//       fechaPedido,
-//       isDelivery,
-//       fechaDelivery,
-//     });
-
-//     const resulPedido = await nuevoPedido.save();
-
-//     // Responde con el ID de la preferencia
-//     res.status(201).json({
-//       resulPedido,
-//       result,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ message: "Error interno en el servidor." });
-//   }
-// };
 export const receiveWebhook = async (req, res) => {
   try {
     console.log("receiveWebhook");
@@ -230,46 +171,176 @@ export const receiveWebhook = async (req, res) => {
       const paymentId = payme["data.id"];
       await updateOrderWithPaymentInfo(paymentId);
     }
+
     console.log("payme", payme);
   } catch (error) {
     console.log("Error:", error);
   }
 };
+
 export const updatePedido = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
-    const datosActualizados = req.body;
+    const {
+      failureUrl,
+      usuario,
+      ordenItems,
+      DireccionEnvio,
+      metodoPago,
+      precioTotal,
+      estadoPedido,
+      fechaPedido,
+      isDelivery,
+      fechaDelivery,
+    } = req.body;
 
-    const pedidoActualizado = await Orden.findByIdAndUpdate(
-      id,
-      datosActualizados,
-      { new: true }
-    );
+    const io = req.io;
 
-    if (!pedidoActualizado) {
-      return res.status(404).json({ message: "Orden not found" });
+    let cliente = id
+      ? await Cliente.findById(usuario._id)
+      : await Cliente.findOne({ usuario: usuario._id });
+
+    if (!cliente) {
+      const newCliente = await Cliente.create({
+        usuario: usuario._id,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        telefono: usuario.telefono,
+        dni: usuario.dni,
+      });
+
+      cliente = newCliente;
     }
 
-    return res.json(pedidoActualizado);
+    const clienteId = cliente._id;
+
+    const existingPedido = await Orden.findById(req.params.id);
+
+    if (!existingPedido) {
+      return handleError(res, 404, "Pedido no encontrado.");
+    }
+
+    existingPedido.cliente = clienteId;
+    existingPedido.ordenItems = ordenItems;
+    existingPedido.DireccionEnvio = DireccionEnvio;
+    existingPedido.metodoPago = metodoPago;
+    existingPedido.precioTotal = parseInt(precioTotal);
+    existingPedido.estadoPedido = estadoPedido;
+    existingPedido.fechaPedido = fechaPedido;
+    existingPedido.isDelivery = isDelivery;
+    existingPedido.fechaDelivery = fechaDelivery;
+
+    const updatedPedido = await existingPedido.save();
+
+    const id_orden = updatedPedido._id.toString();
+    const result = !usuario.isAdmin
+      ? await createMercadoPagoPreference(
+          ordenItems,
+          usuario,
+          `${NGROK_URL}/pedido/webhook`,
+          failureUrl,
+          id_orden
+        )
+      : {};
+
+    io.emit("pedidoActualizado", { updatedPedido });
+    console.log("Evento pedidoActualizado emitido con éxito:", {
+      updatedPedido,
+    });
+
+    handleSuccess(res, { updatedPedido, result });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    console.error(error);
+    handleError(res, 500, "Error interno en el servidor.");
+  }
+};
+
+export const createPago = async (req, res) => {
+  try {
+    const { id_orden } = req.params;
+    console.log(id_orden);
+    console.log(req.params);
+    const failureUrl = "pedidos";
+    const online = await isOnline();
+
+    if (!online) {
+      return handleError(res, 500, "No internet connection.");
+    }
+
+    const pedido = await Orden.findOne({ _id: id_orden })
+      .populate(populateCliente())
+      .populate({
+        path: "ordenItems.producto",
+        model: "Product",
+        select: "nombre precio",
+      });
+
+    if (!pedido) {
+      return handleError(res, 404, "Order not found.");
+    }
+
+    const result = await createMercadoPagoPreference(
+      pedido.ordenItems,
+      pedido.cliente,
+      `${NGROK_URL}/pedido/webhook`,
+      failureUrl,
+      id_orden
+    );
+
+    if (!result) {
+      return handleError(res, 500, "Error creating MercadoPago preference.");
+    }
+
+    handleSuccess(res, { pedido, result });
+  } catch (error) {
+    console.error(error);
+    handleError(res, 500, "Internal server error.");
   }
 };
 
 export const deletePedido = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("id", id);
+    const ordenList = await Orden.findById(id);
 
-    const Orden = await Orden.findById(id);
-
-    if (!Orden) {
-      return res.status(404).json({ message: "Orden not found" });
+    if (!ordenList) {
+      return handleError(res, 404, "Orden not found");
     }
 
     await Orden.findByIdAndDelete(id);
 
-    return res.sendStatus(204);
+    res.sendStatus(204);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    handleError(res, 500, error.message);
+  }
+};
+
+export const updatePedidoDireccionEnvio = async (req, res) => {
+  const { pedidoId } = req.params;
+  const { direccion, referencia, localidad } = req.body;
+
+  try {
+    const pedido = await Pedido.findById(pedidoId);
+
+    if (!pedido) {
+      return handleError(res, 404, "Pedido not found");
+    }
+
+    if (pedido.usuario._id.toString() !== req.user._id.toString()) {
+      return handleError(res, 403, "Unauthorized");
+    }
+
+    pedido.DireccionEnvio.direccion = direccion;
+    pedido.DireccionEnvio.referencia = referencia;
+    pedido.DireccionEnvio.localidad = localidad;
+
+    await pedido.save();
+
+    handleSuccess(res, { message: "Pedido updated successfully" });
+  } catch (error) {
+    console.error("Error updating pedido:", error);
+    handleError(res, 500, "Internal Server Error");
   }
 };

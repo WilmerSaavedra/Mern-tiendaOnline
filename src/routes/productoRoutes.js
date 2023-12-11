@@ -4,7 +4,7 @@ import {
   deleteProduct,
   getProductId,
   getProducts,
-  updateProduct,
+  updateProduct,buscarProductos
 } from "../controllers/productoController.js";
 import { auth, isAdmin } from "../middlewares/auth.middleware.js";
 import { validateSchema } from "../middlewares/validator.middleware.js";
@@ -21,6 +21,8 @@ router.post(
 );
 
 router.get("/obtener/:id", auth, getProductId);
+router.get("/buscar/:parametro?", buscarProductos);
+
 
 router.put(
   "/editar/:id",

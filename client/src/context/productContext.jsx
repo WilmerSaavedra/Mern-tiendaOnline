@@ -6,6 +6,7 @@ import {
   getProductSRequest,
   getProductRequest,
   updateProductRequest,
+  getProductBuscarRequest
 } from "../api/product";
 
 const ProductContext = createContext();
@@ -31,7 +32,9 @@ export function ProductProvider({ children }) {
   }, [errors]);
   const getProducts = async () => {
     const res = await getProductSRequest();
+    console.log("getProducts conetext",res.data)
     setProducts(res.data);
+    return res.data
   };
 
   const deleteProduct = async (id) => {
@@ -67,6 +70,14 @@ export function ProductProvider({ children }) {
       console.error(error);
     }
   };
+  const getProductBuscar = async (parametro) => {
+    try {
+      const res = await getProductBuscarRequest(parametro);
+      return res.data;
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const updateProduct = async (id, product) => {
     try {
@@ -88,6 +99,7 @@ export function ProductProvider({ children }) {
         createProduct,
         getProduct,
         updateProduct,
+        getProductBuscar
       }}
     >
       {children}

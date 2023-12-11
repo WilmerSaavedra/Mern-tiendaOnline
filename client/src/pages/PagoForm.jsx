@@ -31,7 +31,7 @@ export const PagoForm = () => {
         }
       })();
     }
-  }, [getPedido]);
+  }, []);
 
   return (
     <div className="container">

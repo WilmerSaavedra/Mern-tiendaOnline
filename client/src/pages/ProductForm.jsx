@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -7,7 +7,8 @@ import { useForm, useWatch } from "react-hook-form";
 import { useProducts } from "../context/productContext";
 import { ModalProducto } from "../components/products/ModalProducto";
 import { Alert } from "react-bootstrap";
-
+import {toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 dayjs.extend(utc);
 
 export function ProductForm({ isOpen }) {
@@ -142,7 +143,18 @@ export function ProductForm({ isOpen }) {
     // reset()
     
   };
+  const notificationShownRef = useRef(false);
 
+  const showNotification = () => {
+    toast.error("¡El stock está vacío!", { position: "top-center" });
+    notificationShownRef.current = true;
+  };
+
+  useEffect(() => {
+    if (products.some(product => product.stock === 0) && !notificationShownRef.current) {
+      showNotification();
+    }
+  }, [products]);
   return (
     <>
       <div className="shopping-cart section">
@@ -172,6 +184,7 @@ export function ProductForm({ isOpen }) {
                 <thead>
                   <tr className="main-hading">
                     <th className="text-start">Producto</th>
+                    <th className="text-start">Stock</th>
                     <th className="text-start"> Imagen</th>
                     <th className="text-start">Precio</th>
                     <th className="text-start">Accion</th>
@@ -180,10 +193,10 @@ export function ProductForm({ isOpen }) {
                 </thead>
                 <tbody>
                   {products.map((product) => (
-                    <tr key={product._id}>
+                    <tr style={{ backgroundColor: product.stock === 0 ? "#E87B85" : "" }} key={product._id}>
                       <td>{product.nombre}</td>
 
-                      <td style={{ display: "none" }}>{product.descripcion}</td>
+                      <td >{product.stock}</td>
                       <td>
                         <img
                           class="rounded-circle"
@@ -235,6 +248,7 @@ export function ProductForm({ isOpen }) {
       </div>
 
       <ModalProducto isOpen={isModalOpen} closeModal={closeModal} productId={editingProductId} />
+      {/* <ToastContainer /> */}
     </>
   );
 }

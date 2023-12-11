@@ -32,6 +32,13 @@ const ordenSchema = new mongoose.Schema(
     fechaPedido: Date,
     isDelivery: Boolean,
     fechaDelivery: Date,
+    historialCambios: [
+      {
+        estadoAnterior: String,
+        nuevoEstado: String,
+        fecha: Date,
+      },
+    ],
   },
   {
     timestamps: true,

@@ -1,4 +1,4 @@
-import React ,{ createContext, useContext ,useState,useEffect} from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   getPedidosRequest,
   getPedidoRequest,
@@ -6,6 +6,8 @@ import {
   createPedidoRequest,
   updatePedidoRequest,
   deletePedidoRequest,
+  getPedidoPagarRequest,
+  updatePedidoEnvioRequest,
 } from "../api/pedido";
 
 const PedidoContext = createContext();
@@ -15,25 +17,22 @@ export const usePedido = () => {
     throw new Error("usePedido debe ser utilizado dentro de un PedidoProvide");
   return context;
 };
-export function PedidoProvider({children}) {
+export function PedidoProvider({ children }) {
   const [pedidos, setPedido] = useState([]);
   const [errors, setErrors] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [datosClienteValidos, setDatosClienteValidos] = useState(false);
 
-  useEffect(() => {
-    if (errors.length > 0) {
-      const timer = setTimeout(() => {
-        setErrors([]);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [errors]);
-
   const getPedidos = async () => {
-    const res = await getPedidosRequest;
-    setPedido(res.data);
+    const res = await getPedidosRequest();
+    setPedido(res);
+    console.log("getPedidos>>>>", res);
+    return res;
   };
-
+  const limpiarPedidos = () => {
+    setPedido([]); // Limpiar el estado de pedidos
+  };
   const deletePedido = async (id) => {
     try {
       const res = await deletePedidoRequest(id);
@@ -48,28 +47,55 @@ export function PedidoProvider({children}) {
   const createPedido = async (pedido) => {
     try {
       const res = await createPedidoRequest(pedido);
+      console.log("------" + res.data);
+
       setPedido([...pedidos, res.data]);
       setDatosClienteValidos(true);
       console.log("------" + res.data);
       return res.data;
     } catch (error) {
       console.log(error);
-      setDatosClienteValidos(false)
-      setErrors([error.response.data.message]);
+  
+      if (error.response && error.response.status === 400) {
+        const errorMessage = error.response.data.message;
+        setErrors([errorMessage]);
+  
+        console.log("errorMessage",errorMessage);
+      } else {
+        setDatosClienteValidos(false);
+        setErrors(["Error al procesar la solicitud"]); 
+      }
     }
   };
+  
 
   const getPedido = async (id) => {
     try {
       const res = await getPedidoRequest(id);
+      console.log("getPedido", res);
+      setPedido(res.data);
       return res.data;
     } catch (error) {
       console.error(error);
+      setErrors(error.response.data.message);
     }
   };
-  const getPedidoxUsuario = async (id, idUser) => {
+  const getPedidoPagar = async (id) => {
     try {
-      const res = await getPedidoXUsuaioRequest(id, idUser);
+      const res = await getPedidoPagarRequest(id);
+      console.log("getPedidoPagar", res);
+      setPedido(res.data);
+      return res.data;
+    } catch (error) {
+      console.error(error);
+      setErrors(error.response.data.message);
+    }
+  };
+  const getPedidoxUsuario = async (id) => {
+    try {
+      const res = await getPedidoXUsuaioRequest(id);
+      console.log("getPedidoXUsuaioRequest",res)
+      setPedido(res.data);
       return res.data;
     } catch (error) {
       console.error(error);
@@ -78,12 +104,61 @@ export function PedidoProvider({children}) {
 
   const updatePedido = async (id, pedido) => {
     try {
-      await updatePedidoRequest(id, pedido);
+      console.log("updatePedido>>>>>>>>>>>>><");
+
+      const res = await updatePedidoRequest(id, pedido);
+      console.log("res>>>>>>>>>>>>><", res);
+      if (res.status !== 200) {
+        setErrors([res.data.message]);
+        console.log("res.status>>>>>>>>>>>>><", res);
+      }
+      return res.data;
     } catch (error) {
-      console.error(error);
-      setErrors([error.response.data.message]);
+      // console.error("Caught an error:", error.response);
+      setErrors([error?.response.data.message]);
+      console.log("Errors>>>>>>>>>>>>><:", error);
+
+      console.log("Errors inside updatePedido:", errors);
     }
   };
+  const updatePedidoEnvio = async (id, pedido) => {
+    try {
+      console.log("updatePedido>>>>>>>>>>>>><");
+
+      const res = await updatePedidoEnvioRequest(id, pedido);
+      console.log("res>>>>>>>>>>>>><", res);
+      if (res.status !== 200) {
+        setErrors([res.data.message]);
+        console.log("res.status>>>>>>>>>>>>><", res);
+      }
+      return res.data;
+    } catch (error) {
+      // console.error("Caught an error:", error.response);
+      setErrors([error?.response.data.message]);
+      console.log("Errors>>>>>>>>>>>>><:", error);
+
+      console.log("Errors inside updatePedido:", errors);
+    }
+  };
+  // ...
+
+  useEffect(() => {
+    let timer;
+    if (errors.length > 0) {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(() => {
+        setErrors([]);
+      }, 5000);
+    }
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [errors]);
+
   return (
     <PedidoContext.Provider
       value={{
@@ -95,10 +170,15 @@ export function PedidoProvider({children}) {
         updatePedido,
         deletePedido,
         errors,
+        setErrors,
         datosClienteValidos,
-        setDatosClienteValidos
+        setDatosClienteValidos,
+        limpiarPedidos,
+        getPedidoPagar,
+        updatePedidoEnvio,
       }}
-     > {children}
+    >
+      {children}
     </PedidoContext.Provider>
   );
 }

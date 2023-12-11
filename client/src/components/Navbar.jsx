@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/authContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -40,7 +40,13 @@ import {
 } from "mdb-react-ui-kit";
 export function Navbar() {
   const [activeTab, setActiveTab] = useState("login");
+  const [isLoading, setIsLoading] = useState(true);
   const { listaCarrito } = useCarrito();
+  const [userLinks, setUserLinks] = useState(null);
+  
+  const [Cliente, setCliente] = useState(null);
+
+  const isMounted = useRef(true);
   const {
     signin,
     signup,
@@ -48,13 +54,46 @@ export function Navbar() {
     errors: loginErrors,
     isAuthenticated,
     user,
+    getUsers,
+    isAdmin
   } = useAuth();
-  const navigate=useNavigate()
+  const navigate = useNavigate();
+console.log("user._id>>>>>>>>>>>>>>> ",user)
+  useEffect(() => {
+    isMounted.current = true; // El componente se montó
+
+    return () => {
+      isMounted.current = false; // El componente se desmontó
+    };
+  }, []);
+  useEffect(() => {
+    const fetchData = async () => {
+      console.log("Fetching data...");
+      if (isAuthenticated && isMounted.current) {
+        setCliente(user.id)
+        console.log("User is authenticated, getting user data...");
+        if (!user) {
+          await getUsers();
+        }
+        console.log("Setting user links...");
+        setUserLinks(user ? (user.isAdmin ? "admin" : "user") : "guest");
+        setIsLoading(false);
+      }
+      console.log("Finished fetching data.");
+    };
+  
+    fetchData();
+  }, [isAuthenticated, getUsers, user,isAdmin]);
+  
+  console.log("isLoading:", isLoading);
+  console.log("userLinks:", userLinks);
   useEffect(() => {
     if (isAuthenticated) {
+      
+        setCliente(user.id)
       closeModal();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated,isAdmin]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   console.log("isModalOpen:", isModalOpen);
@@ -64,11 +103,107 @@ export function Navbar() {
 
   const closeModal = () => {
     setIsModalOpen(false);
- 
   };
 
   const cantidadProductosEnCarrito =
     obtenerCantidadTotalEnCarrito(listaCarrito);
+
+
+  const renderUserLinks = () => (
+    <>
+      <li className="nav-item">
+        <NavLink to="/" className="nav-link">
+          Home
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/about" className="nav-link">
+          About
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/shop" className="nav-link">
+          Shop
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/pedidos" className="nav-link">
+          Mis Pedidos
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/contact" className="nav-link">
+          Contact
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to={`/isCliente/${Cliente}`}className="nav-link">
+          Mis Datos
+        </NavLink>
+      </li>
+      {/* Add other user links here */}
+    </>
+  );
+  const renderNoUserLinks = () => (
+    <>
+      <li className="nav-item">
+        <NavLink to="/" className="nav-link">
+          Home
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/about" className="nav-link">
+          About
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/shop" className="nav-link">
+          Shop
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/contact" className="nav-link">
+          Contact
+        </NavLink>
+      </li>
+    </>
+  );
+  const renderAdminLinks = () => (
+    <>
+      <li className="nav-item">
+        <NavLink to="/user" className="nav-link">
+          Users
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/cliente" className="nav-link">
+          Cliente
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/marca" className="nav-link">
+          Marcas
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/product" className="nav-link">
+          Products
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/orden" className="nav-link">
+          Pedidos
+        </NavLink>
+      </li>
+      <li className="nav-item">
+        <NavLink to="/reportes" className="nav-link">
+          Reportes
+        </NavLink>
+      </li>
+      {/* Add other admin links here */}
+    </>
+  );
+ 
   return (
     <>
       <ModalLogin isOpen={isModalOpen} closeModal={closeModal} />
@@ -158,89 +293,10 @@ export function Navbar() {
           >
             <div className="flex-fill">
               <ul className="nav navbar-nav d-flex justify-content-between mx-lg-auto">
-                {isAuthenticated ? (
-                  <>
-                    {user.isAdmin && (
-                      <>
-                        <li class="nav-item">
-                          <NavLink to="/admin/users" className="nav-link">
-                            Users
-                          </NavLink>
-                        </li>
-                        <li class="nav-item">
-                          <NavLink to="/product" className="nav-link">
-                            Products
-                          </NavLink>
-                        </li>
-                        <li class="nav-item">
-                          <NavLink to="/ventas" className="nav-link">
-                            Ventas
-                          </NavLink>
-                        </li>
-                        <li class="nav-item">
-                          <NavLink to="/reportes" className="nav-link">
-                            Reportes
-                          </NavLink>
-                        </li>
-                      </>
-                    )}
-                    {!user.isAdmin && (
-                      <>
-                        <li className="nav-item">
-                          <NavLink to="/" className="nav-link">
-                            Home
-                          </NavLink>
-                        </li>
-                        <li className="nav-item">
-                          <NavLink to="/about" className="nav-link">
-                            About
-                          </NavLink>
-                        </li>
-                        <li className="nav-item">
-                          <NavLink to="/shop" className="nav-link">
-                            Shop
-                          </NavLink>
-                        </li>
-                        <li className="nav-item">
-                          <NavLink to="/contact" className="nav-link">
-                            Contact
-                          </NavLink>
-                        </li>
-                        <li className="nav-item">
-                          <NavLink to="/" className="nav-link">
-                            Mis compras
-                          </NavLink>
-                        </li>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <li className="nav-item">
-                      <NavLink to="/" className="nav-link">
-                        Home
-                      </NavLink>
-                    </li>
-                    <li className="nav-item">
-                      <NavLink to="/about" className="nav-link">
-                        About
-                      </NavLink>
-                    </li>
-                    <li className="nav-item">
-                      <NavLink to="/shop" className="nav-link">
-                        Shop
-                      </NavLink>
-                    </li>
-                    <li className="nav-item">
-                      <NavLink to="/contact" className="nav-link">
-                        Contact
-                      </NavLink>
-                    </li>
-                  </>
-                )}
+              {isAuthenticated ? (isAdmin ? renderAdminLinks() : renderUserLinks()) : (renderNoUserLinks())}
               </ul>
             </div>
-            <div className=" align-self-center d-flex" >
+            <div className=" align-self-center d-flex">
               <div className="d-lg-none flex-sm-fill mt-3 mb-4 col-7 col-sm-auto pr-3"></div>
               {isAuthenticated ? (
                 <>
@@ -254,7 +310,7 @@ export function Navbar() {
                     }}
                   >
                     <HiOutlineLogin className="text-sm" />
-                    <span className="px-2">Salir </span>
+                    <span className="px-2">{user.username} </span>
                   </a>
                   <Link
                     to="/carrito"
@@ -279,7 +335,6 @@ export function Navbar() {
                   </Link>
                   {/* {isModalOpen && <ModalLogin isOpen={isModalOpen} closeModal={closeModal} />} */}
                   <Link
-                   
                     to="/carrito"
                     className="nav-icon position-relative text-decoration-none"
                   >

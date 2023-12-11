@@ -6,11 +6,11 @@ import {
   getPedidos,
   getPedidosIdxIdUsuario,
   updatePedido,
-  receiveWebhook
+  receiveWebhook,createPago,updatePedidoDireccionEnvio
 } from "../controllers/pedidoController.js";
 import { auth,isAdmin } from "../middlewares/auth.middleware.js";
 import { validateSchema } from "../middlewares/validator.middleware.js";
-import { createPedidoSchema } from "../schemas/pedido.js";
+import { createPedidoSchema,UpdatePedidoSchema } from "../schemas/pedido.js";
 
 const router = Router();
 
@@ -22,6 +22,12 @@ router.post(
   validateSchema(createPedidoSchema),
   createPedido
 );
+router.get(
+  "/pagar/:id_orden",
+  auth,
+  // validateSchema(createPedidoSchema),
+  createPago
+);
 router.post(
   "/webhook", receiveWebhook
 );
@@ -29,13 +35,19 @@ router.get(
   "/estadoPago", receiveWebhook
 );
 router.get("/obtener/:id", getPedidoId);
-router.get("/obtenerxUsuaio/:id", auth, getPedidosIdxIdUsuario);
+router.get("/obtenerxUsuaio/:idUsuario", auth, getPedidosIdxIdUsuario);
 router.put(
-  "/editar/:id",
-  isAdmin,
-  validateSchema(createPedidoSchema),
+  "/crudpedido/:id",
+  auth,
+  validateSchema(UpdatePedidoSchema),
   updatePedido
 );
-router.delete("/eliminar/:id", isAdmin, deletePedido);
+router.put(
+  "/pedidoEnvio/:id",
+  auth,
+  // validateSchema(UpdatePedidoSchema),
+  updatePedidoDireccionEnvio
+);
+router.delete("/eliminar/:id", auth, deletePedido);
 
 export default router;

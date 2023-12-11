@@ -30,11 +30,7 @@ const productSchema = new mongoose.Schema(
       enum: ["urbano", "deportivo", "escolar"],
       // required: true,
     },
-    marca: {
-      type: String,
-      enum: marcasValidas,
-      required: true,
-    },
+    marca: { type: mongoose.Schema.Types.ObjectId, ref: 'Marca' },
     precio: {
       type: Number,
       // required: true,
@@ -87,4 +83,5 @@ const productSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
 export default mongoose.model("Product", productSchema);

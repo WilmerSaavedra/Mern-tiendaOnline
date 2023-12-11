@@ -71,6 +71,12 @@ export const CarritoProvider = ({ children }) => {
     };
     dispatch(action);
   };
+  const limpiarCarrito = () => {
+    const action = {
+      type: "[Carrito] limpiar Carrito",
+    };
+    dispatch(action);
+  };
   return (
     <CarritoContext.Provider
       value={{
@@ -81,6 +87,7 @@ export const CarritoProvider = ({ children }) => {
         disminuirCompra,
         actualizarCantidad,
         actualizarCarrito,
+        limpiarCarrito
       }}
     >
       {children}

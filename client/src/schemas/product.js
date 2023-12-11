@@ -61,9 +61,9 @@ export const productSchema = z.object({
       message: "Estilo no válido",
     }),
 
-  marca: z.string().refine((marca) => ["nike", "adidas"].includes(marca), {
-    message: "Marca no válida",
-  }),
+    marca: z.string().refine((marca) => marca.trim() !== "", {
+      message: "La marca no puede estar vacía",
+    }),
 
   color: z
     .string()

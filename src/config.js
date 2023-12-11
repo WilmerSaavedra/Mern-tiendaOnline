@@ -5,7 +5,7 @@ export const MONGODB_URI =
 export const TOKEN_SECRET = process.env.TOKEN_SECRET || "secret";
 
 export const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-export const NGROK_URL = process.env.NGROK_URL || "https://7a3f-190-236-14-78.ngrok.io";
+export const NGROK_URL = process.env.NGROK_URL || "https://ead0-190-234-21-121.ngrok.io";
 export const TOKEN_ACCESS_MERCADOPAGO = process.env.TOKEN_ACCESS_MERCADOPAGO || "TEST-3539892593181491-102401-7c1552ea411a979dd0883c30be9eb96e-1522496250";
 
 // Configura las claves

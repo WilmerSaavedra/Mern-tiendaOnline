@@ -1,4 +1,6 @@
 import Product from "../models/Producto.js";
+import Marca from "../models/Marca.js";
+
 import { uploadImage, deleteImage } from "../libs/cloudinary.js";
 import fs from "fs-extra";
 export const darLikeAProducto = async (productoId, usuarioId, userIP) => {
@@ -64,15 +66,19 @@ export const actualizarLikesYRating = async (productoId, usuarioId, userIP) => {
 };
 export const getProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find().populate("marca", "nombre");
     return res.json(products);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
+
 export const getProductId = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id).populate(
+      "marca",
+      "nombre"
+    );
     if (!product) {
       return res.status(404).json({ message: "Producto no existe" });
     }
@@ -104,9 +110,17 @@ export const createProduct = async (req, res) => {
         message: "Se requiere una imagen principal para crear el producto.",
       });
     }
+    // Buscar la marca por nombre
+    const existingMarca = await Marca.findOne({ nombre: marca });
 
+    if (!existingMarca) {
+      return res.status(400).json({
+        message: "La marca especificada no existe.",
+      });
+    }
+    console.log("existingMarca", existingMarca);
     const customFileName = `${nombre.replace(/\s+/g, "_")}_${Date.now()}`;
-    
+
     const uploadResultPromise = uploadImage(
       imagenPrincipal.tempFilePath,
       customFileName
@@ -126,7 +140,7 @@ export const createProduct = async (req, res) => {
       stock: Number(stock),
       genero,
       estilo,
-      marca,
+      marca: existingMarca._id,
       tallas,
       color,
       esLanzamiento,
@@ -154,14 +168,14 @@ export const updateProduct = async (req, res) => {
       tallas,
       color,
       esLanzamiento,
-      imagenPrincipal: img,
+      // imagenPrincipal: img,
     } = req.body;
     const { imagenPrincipal } = req.files || {};
     const productId = req.params.id;
-console.log("img",img)
-console.log("imagenPrincipal",imagenPrincipal)
-console.log("req.body",req.body)
-console.log("req.files",req.files)
+    // console.log("img",img)
+    console.log("imagenPrincipal", imagenPrincipal);
+    console.log("req.body", req.body);
+    console.log("req.files", req.files);
 
     const existingProduct = await Product.findById(productId);
 
@@ -170,7 +184,13 @@ console.log("req.files",req.files)
         .status(404)
         .json({ message: "El producto no fue encontrado." });
     }
+    const existingMarca = await Marca.findOne({ nombre: marca });
 
+    if (!existingMarca) {
+      return res.status(400).json({
+        message: "La marca especificada no existe.",
+      });
+    }
     let newImageInfo;
 
     if (imagenPrincipal?.tempFilePath) {
@@ -192,12 +212,13 @@ console.log("req.files",req.files)
         url: result.secure_url,
         public_id: result.public_id,
       };
-    } else if (img?.url && img.public_id) {
-      newImageInfo = {
-        url: img.url,
-        public_id: img.public_id,
-      };
     }
+    // else if (img?.url && img.public_id) {
+    //   newImageInfo = {
+    //     url: img.url,
+    //     public_id: img.public_id,
+    //   };
+    // }
 
     if (nombre) {
       existingProduct.nombre = nombre;
@@ -207,7 +228,7 @@ console.log("req.files",req.files)
     if (stock) existingProduct.stock = Number(stock);
     if (genero) existingProduct.genero = genero;
     if (estilo) existingProduct.estilo = estilo;
-    if (marca) existingProduct.marca = marca;
+    if (marca) existingProduct.marca = existingMarca._id;
     if (tallas) existingProduct.tallas = tallas;
     if (color) existingProduct.color = color;
     if (esLanzamiento !== undefined)
@@ -243,5 +264,60 @@ export const deleteProduct = async (req, res) => {
     return res.sendStatus(204);
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+export const buscarProductos = async (req, res) => {
+  try {
+    const { parametro } = req.params;
+    console.log("parametro", parametro);
+
+    if (parametro === undefined) {
+      const productosTodos = await Product.find();
+      return res.status(200).json({ success: true, productos: productosTodos });
+    }
+
+    let consultaProductos;
+
+    if (/^[0-9a-fA-F]{24}$/.test(parametro)) {
+      consultaProductos = { _id: parametro };
+    } else {
+      const esNumerico = !isNaN(Number(parametro));
+
+      const marcaEncontrada = await Marca.findOne({
+        nombre: { $regex: parametro, $options: "i" },
+      });
+
+      if (marcaEncontrada) {
+        consultaProductos = { marca: marcaEncontrada._id };
+      } else {
+        consultaProductos = esNumerico
+          ? {
+              $or: [
+                { stock: Number(parametro) },
+                { precio: Number(parametro) },
+              ],
+            }
+          : {
+              $or: [
+                { nombre: { $regex: `^${parametro}`, $options: "i" } },
+                { genero: { $regex: parametro, $options: "i" } },
+                { estilo: { $regex: parametro, $options: "i" } },
+                { tallas: { $regex: parametro, $options: "i" } },
+              ],
+            };
+      }
+    }
+
+    const productosEncontrados = await Product.find(consultaProductos).populate(
+      "marca"
+    );
+
+    console.log("productosEncontrados", productosEncontrados);
+    res.status(200).json({ success: true, productos: productosEncontrados });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ success: false, error: "Error al buscar productos" });
   }
 };

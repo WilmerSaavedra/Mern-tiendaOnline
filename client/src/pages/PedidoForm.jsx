@@ -5,6 +5,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { pedidoSchema } from "../schemas/pedido";
 import { useAuth } from "../context/authContext";
 import { usePedido } from "../context/pedidoContext";
+import { useClientes } from "../context/clienteContext";
+import Swal from "sweetalert2";
 import {
   calcularTotal,
   calcularSubTotal,
@@ -26,7 +28,7 @@ import {
   Wallet,
 } from "@mercadopago/sdk-react";
 
-import { usePago } from "../context/pagoContext";
+// import { usePago } from "../context/pagoContext";
 import { LineaTiempo } from "../components/LineaTiempo";
 // import { Wallet } from "@mercadopago/sdk-react";
 
@@ -40,7 +42,10 @@ export const PedidoForm = () => {
     errors: pedidoErrors,
   } = usePedido();
   const { user } = useAuth();
-
+  const {
+    getClienteIdUsuario,
+    errors: clienteErrors,
+  } = useClientes();
   const {
     register,
     setValue,
@@ -69,7 +74,22 @@ export const PedidoForm = () => {
   useEffect(() => {
     setDatosClienteValidos(false);
   }, []);
+  useEffect(() => {
+    const fetchClienteData = async () => {
+      try {
+        const clienteData = await getClienteIdUsuario(user.id);
 
+        setValue("nombre", clienteData.nombre);
+        setValue("apellido", clienteData.apellido);
+        setValue("telefono", clienteData.telefono);
+        setValue("dni", clienteData.dni);
+      } catch (error) {
+        console.error("Error al obtener datos del cliente:", error);
+      }
+    };
+
+    fetchClienteData();
+  }, [ user.id, setValue]);
   useEffect(() => {
     if (metodoPago === "Paypal") {
       setMostrarBotonPaypal(true);
@@ -86,8 +106,10 @@ export const PedidoForm = () => {
     try {
       setIsLoading(true);
       const pedidoData = {
+        failureUrl: "pedidos",
         usuario: {
           _id: user.id,
+          isAdmin: user.isAdmin,
           nombre: data.nombre,
           apellido: data.apellido,
           dni: data.dni,
@@ -118,12 +140,17 @@ export const PedidoForm = () => {
 
       if (metodoPago === "Mercado Pago") {
         if (respuesta.result.id) {
+          Swal.fire({
+            title: "¡Pedido creado!",
+            text: "Tu pedido ha sido creado exitosamente.",
+            icon: "success",
+          })
           const preferenceId = respuesta.result.id;
           setPreferenceId(preferenceId);
 
           const storedOrdenId = respuesta.result.external_reference;
           window.location.replace(respuesta.result.init_point);
-          
+
           localStorage.setItem("OrdenId", storedOrdenId);
         } else {
           console.error("Error al iniciar el proceso de pago.");
@@ -233,6 +260,7 @@ export const PedidoForm = () => {
                     <div className="col-lg-12 col-md-12 col-12 mt-4">
                       <Select
                         className="form-select"
+                        name="localidad"
                         {...register("localidad")}
                         onChange={handleInputChange}
                       >

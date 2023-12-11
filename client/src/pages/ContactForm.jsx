@@ -44,9 +44,10 @@ export const ContactForm = () => {
       setIsLoading(true);
 
       if (!user) {
-        setValue("username", data.username);
-        setValue("email", data.email);
+        setValue("username", user.username);
+        setValue("email", user.email);
       }
+      console.log("data>>>>>>>>>",data)
       await sendEmail(data);
 
       console.log("eoores", contactErrors);
@@ -96,7 +97,7 @@ export const ContactForm = () => {
                   name="username"
                   placeholder="Name"
                   {...register("username")}
-                  value={user ? user.username : null}
+                  value={user ? user.username : ""}
                   readOnly={user ? true : false}
                 />
                 <p>{errors.username?.message}</p>
@@ -110,7 +111,7 @@ export const ContactForm = () => {
                   name="email"
                   placeholder="Email"
                   {...register("email")}
-                  value={user ? user.email : null}
+                  value={user ? user.email : ""}
                   readOnly={user ? true : false}
 
                 />

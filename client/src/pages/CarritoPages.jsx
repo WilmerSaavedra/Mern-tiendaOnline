@@ -127,7 +127,7 @@ const navigate=useNavigate();
                     listaCarrito.map((item) => (
                       <tr key={item._id}>
                         <td className="image" data-title="No">
-                          <img src={item.image.principal.url} alt="#" />
+                          <img src={item.image?.principal.url} alt="#" />
                         </td>
                         <td className="product-des" data-title="Description">
                           <p className="product-name">
